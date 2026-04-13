@@ -112,10 +112,6 @@ export default function BookingModal() {
     return {};
   }, [step, data]);
 
-  const stepValid = useMemo(() => {
-    return Object.keys(validateCurrentStep()).length === 0;
-  }, [validateCurrentStep]);
-
   const goNext = useCallback(() => {
     const e = validateCurrentStep();
     if (Object.keys(e).length > 0) {
@@ -177,7 +173,9 @@ export default function BookingModal() {
     if (e.target === overlayRef.current) closeModal();
   };
 
-  const nextDisabled = step < 4 ? !stepValid : !selectedSlot || submitting;
+  // Step 1–3: always enabled so clicking reveals validation errors inline.
+  // Step 4: disabled until a slot is picked (and during submit).
+  const nextDisabled = step < 4 ? false : !selectedSlot || submitting;
 
   return (
     <div
