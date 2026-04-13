@@ -91,15 +91,51 @@ export async function createContact(input: CreateContactInput): Promise<string> 
     cache: "no-store",
   });
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`GHL create-contact ${res.status}: ${body.slice(0, 300)}`);
+  if (res.ok) {
+    const data = (await res.json()) as { contact?: { id?: string }; id?: string };
+    const id = data.contact?.id ?? data.id;
+    if (!id) throw new Error("GHL create-contact: no contact id in response");
+    return id;
   }
 
-  const data = (await res.json()) as { contact?: { id?: string }; id?: string };
-  const id = data.contact?.id ?? data.id;
-  if (!id) throw new Error("GHL create-contact: no contact id in response");
-  return id;
+  // Handle "duplicated contacts" case: GHL rejects the POST but returns the
+  // existing contactId in meta. We then PUT the custom fields onto that contact
+  // and return its id so the appointment still gets booked.
+  if (res.status === 400) {
+    const body = await res.text();
+    try {
+      const parsed = JSON.parse(body) as {
+        message?: string;
+        meta?: { contactId?: string };
+      };
+      const existingId = parsed.meta?.contactId;
+      const isDuplicate = parsed.message?.toLowerCase().includes("duplicat");
+      if (existingId && isDuplicate) {
+        await updateContactCustomFields(existingId, input.customFields);
+        return existingId;
+      }
+    } catch {}
+    throw new Error(`GHL create-contact 400: ${body.slice(0, 300)}`);
+  }
+
+  const body = await res.text().catch(() => "");
+  throw new Error(`GHL create-contact ${res.status}: ${body.slice(0, 300)}`);
+}
+
+async function updateContactCustomFields(
+  contactId: string,
+  customFields: { key: string; field_value: string }[],
+): Promise<void> {
+  const res = await fetch(`${BASE}/contacts/${contactId}`, {
+    method: "PUT",
+    headers: headers(),
+    body: JSON.stringify({ customFields }),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`GHL update-contact ${res.status}: ${body.slice(0, 300)}`);
+  }
 }
 
 export type CreateAppointmentInput = {
