@@ -86,12 +86,20 @@ export function validateStep2(d: FormData): Partial<Record<keyof FormData, strin
 
 export function validateStep3(d: FormData): Partial<Record<keyof FormData, string>> {
   const errors: Partial<Record<keyof FormData, string>> = {};
-  const pa = validateMinLength(d.past_attempts, 30, "This answer");
-  if (pa) errors.past_attempts = pa;
-  const paMax = validateMaxLength(d.past_attempts, 2000, "This answer");
-  if (paMax) errors.past_attempts = paMax;
-  if (!d.timeline) errors.timeline = "Please select a timeline.";
-  if (!d.budget_qualifier) errors.budget_qualifier = "Please answer this question.";
+  const trimmed = d.past_attempts.trim();
+  if (trimmed.length === 0) {
+    errors.past_attempts =
+      "Please tell us what you've tried so far — even one sentence helps Tyjani tailor the call to your situation.";
+  } else if (trimmed.length < 30) {
+    errors.past_attempts =
+      "Please give us a bit more context — at least 30 characters. The more Tyjani knows upfront, the more useful the call will be.";
+  } else if (trimmed.length > 2000) {
+    errors.past_attempts = "Please keep this under 2000 characters.";
+  }
+  if (!d.timeline) errors.timeline = "Let us know when you'd like to start.";
+  if (!d.budget_qualifier) {
+    errors.budget_qualifier = "Please pick the option that best describes your situation.";
+  }
   const nMax = validateMaxLength(d.notes, 2000, "Notes");
   if (nMax) errors.notes = nMax;
   return errors;
