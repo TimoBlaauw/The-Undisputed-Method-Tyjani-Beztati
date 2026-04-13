@@ -74,9 +74,14 @@ export async function POST(request: Request) {
       customFields,
     });
   } catch (err) {
-    console.error("[/api/calendar/book] createContact failed", err);
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error("[/api/calendar/book] createContact failed", detail);
     return NextResponse.json(
-      { success: false, error: "Couldn't save your details. Please try again." },
+      {
+        success: false,
+        error: "Couldn't save your details. Please try again.",
+        debug: { step: "createContact", detail, payload: { firstName, lastName, email: body.email, phone: body.phone, customFields } },
+      },
       { status: 502 },
     );
   }
@@ -89,12 +94,13 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ success: true, appointmentId });
   } catch (err) {
-    console.error("[/api/calendar/book] createAppointment failed", err);
-    // Contact was already saved — leave it and ask the user to pick another slot.
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error("[/api/calendar/book] createAppointment failed", detail);
     return NextResponse.json(
       {
         success: false,
         error: "That slot is no longer available. Please pick another time.",
+        debug: { step: "createAppointment", detail, payload: { contactId, startTime: body.startTime, endTime: body.endTime } },
       },
       { status: 409 },
     );
