@@ -84,5 +84,5 @@ Make sure the three GHL env vars exist in the Vercel project before deploying.
 
 - The booking modal is bound globally to any element with the `open-booking` class — preserved from the original landing page so all existing CTAs work without changes.
 - Form state is persisted to `localStorage` under `tum-booking-draft` so users don't lose data when going Back or accidentally closing.
-- After successful booking the user is redirected to `/bedankt` — that page is built separately.
+- After successful booking the user is redirected to `/confirmation` (see `app/confirmation/page.tsx`).
 - The legacy `Landing page/index.html` (the previous static one-pager) lives next to this folder. Keep it for reference until you're satisfied with the migration.

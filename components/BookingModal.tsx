@@ -149,7 +149,7 @@ export default function BookingModal() {
         return;
       }
       try { localStorage.removeItem(STORAGE_KEY); } catch {}
-      window.location.href = "/bedankt";
+      window.location.href = "/confirmation";
     } catch {
       setBookError("Network error. Please check your connection and try again.");
       setSubmitting(false);
