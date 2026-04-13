@@ -111,7 +111,7 @@ export async function createContact(input: CreateContactInput): Promise<string> 
       const existingId = parsed.meta?.contactId;
       const isDuplicate = parsed.message?.toLowerCase().includes("duplicat");
       if (existingId && isDuplicate) {
-        await updateContactCustomFields(existingId, input.customFields);
+        await updateExistingContact(existingId, input);
         return existingId;
       }
     } catch {}
@@ -122,14 +122,22 @@ export async function createContact(input: CreateContactInput): Promise<string> 
   throw new Error(`GHL create-contact ${res.status}: ${body.slice(0, 300)}`);
 }
 
-async function updateContactCustomFields(
+async function updateExistingContact(
   contactId: string,
-  customFields: { key: string; field_value: string }[],
+  input: CreateContactInput,
 ): Promise<void> {
+  // PUT /contacts/{id}. We intentionally omit `email` (that's the dedup match
+  // key — don't change it) and `locationId` (inferred from path). Name + phone
+  // + customFields all get enriched from the latest form submission.
   const res = await fetch(`${BASE}/contacts/${contactId}`, {
     method: "PUT",
     headers: headers(),
-    body: JSON.stringify({ customFields }),
+    body: JSON.stringify({
+      firstName: input.firstName,
+      lastName: input.lastName,
+      phone: input.phone,
+      customFields: input.customFields,
+    }),
     cache: "no-store",
   });
   if (!res.ok) {
