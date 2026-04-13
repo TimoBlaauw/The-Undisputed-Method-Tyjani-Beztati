@@ -33,13 +33,16 @@ export default function BookingModal() {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Amsterdam";
   }, []);
 
-  // Restore draft on mount.
+  // Restore draft on mount (both form data and current step).
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw) as Partial<FormData>;
-        setData((d) => ({ ...d, ...parsed }));
+        const parsed = JSON.parse(raw) as { data?: Partial<FormData>; step?: number };
+        if (parsed.data) setData((d) => ({ ...d, ...parsed.data }));
+        if (parsed.step && parsed.step >= 1 && parsed.step <= 4) {
+          setStep(parsed.step as 1 | 2 | 3 | 4);
+        }
       }
     } catch {}
   }, []);
@@ -47,9 +50,9 @@ export default function BookingModal() {
   // Persist draft on changes.
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ data, step }));
     } catch {}
-  }, [data]);
+  }, [data, step]);
 
   // Bind global "open-booking" CTAs from the static landing page markup.
   useEffect(() => {
@@ -81,9 +84,10 @@ export default function BookingModal() {
 
   const openModal = useCallback(() => {
     setOpen(true);
-    setStep(1);
     setErrors({});
     setBookError(null);
+    // Keep step + data as-is — persisted via localStorage, so reopening
+    // after an accidental outside-click lands on the same step with everything filled.
   }, []);
 
   const closeModal = useCallback(() => {

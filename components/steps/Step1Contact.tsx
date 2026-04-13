@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { getCountries, getCountryCallingCode, AsYouType } from "libphonenumber-js";
+import { useMemo, useState } from "react";
+import {
+  getCountries,
+  getCountryCallingCode,
+  AsYouType,
+  parsePhoneNumber,
+} from "libphonenumber-js";
 import type { CountryCode } from "libphonenumber-js";
 import type { FormData } from "@/lib/validation";
 
@@ -15,9 +20,31 @@ type Props = {
   onChange: (patch: Partial<FormData>) => void;
 };
 
+function parseInitial(phone: string): { country: CountryCode; local: string } {
+  if (!phone) return { country: "NL", local: "" };
+  try {
+    const parsed = parsePhoneNumber(phone);
+    if (parsed?.country) {
+      return { country: parsed.country, local: parsed.nationalNumber || "" };
+    }
+  } catch {}
+  return { country: "NL", local: "" };
+}
+
+function toE164(country: CountryCode, local: string): string {
+  if (!local.trim()) return "";
+  const formatter = new AsYouType(country);
+  formatter.input(local);
+  return (
+    formatter.getNumber()?.number ??
+    `+${getCountryCallingCode(country)}${local.replace(/\D/g, "")}`
+  );
+}
+
 export default function Step1Contact({ data, errors, onChange }: Props) {
-  const [country, setCountry] = useState<CountryCode>("NL");
-  const [localNumber, setLocalNumber] = useState("");
+  const initial = useMemo(() => parseInitial(data.phone), [data.phone]);
+  const [country, setCountry] = useState<CountryCode>(initial.country);
+  const [localNumber, setLocalNumber] = useState(initial.local);
 
   const allCountries = useMemo(() => {
     const all = getCountries();
@@ -25,18 +52,15 @@ export default function Step1Contact({ data, errors, onChange }: Props) {
     return [...PRIORITY, ...rest];
   }, []);
 
-  // Sync the combined E.164 phone whenever country or local number changes.
-  useEffect(() => {
-    if (!localNumber.trim()) {
-      if (data.phone) onChange({ phone: "" });
-      return;
-    }
-    const formatter = new AsYouType(country);
-    formatter.input(localNumber);
-    const e164 = formatter.getNumber()?.number ?? `+${getCountryCallingCode(country)}${localNumber.replace(/\D/g, "")}`;
-    if (e164 !== data.phone) onChange({ phone: e164 });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [country, localNumber]);
+  const handleCountry = (c: CountryCode) => {
+    setCountry(c);
+    onChange({ phone: toE164(c, localNumber) });
+  };
+
+  const handleLocal = (v: string) => {
+    setLocalNumber(v);
+    onChange({ phone: toE164(country, v) });
+  };
 
   return (
     <>
@@ -76,7 +100,7 @@ export default function Step1Contact({ data, errors, onChange }: Props) {
           <select
             aria-label="Country code"
             value={country}
-            onChange={(e) => setCountry(e.target.value as CountryCode)}
+            onChange={(e) => handleCountry(e.target.value as CountryCode)}
           >
             {allCountries.map((c) => (
               <option key={c} value={c}>
@@ -91,7 +115,7 @@ export default function Step1Contact({ data, errors, onChange }: Props) {
             autoComplete="tel-national"
             placeholder="6 1234 5678"
             value={localNumber}
-            onChange={(e) => setLocalNumber(e.target.value)}
+            onChange={(e) => handleLocal(e.target.value)}
           />
         </div>
         {errors.phone && <span className="field-error">{errors.phone}</span>}
