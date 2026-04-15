@@ -33,8 +33,11 @@ export async function fetchFreeSlots(params: {
   startDate: number;
   endDate: number;
   timezone: string;
+  calendarId?: string;
+  slotDurationMinutes?: number;
 }): Promise<NormalizedSlots> {
-  const calendarId = requireEnv("GHL_CALENDAR_ID");
+  const calendarId = params.calendarId || requireEnv("GHL_CALENDAR_ID");
+  const durationMs = (params.slotDurationMinutes ?? 30) * 60 * 1000;
   const url = new URL(`${BASE}/calendars/${calendarId}/free-slots`);
   url.searchParams.set("startDate", String(params.startDate));
   url.searchParams.set("endDate", String(params.endDate));
@@ -55,7 +58,7 @@ export async function fetchFreeSlots(params: {
 
     const slots: GhlSlot[] = slotsRaw.map((startTime) => {
       const start = new Date(startTime);
-      const end = new Date(start.getTime() + 30 * 60 * 1000);
+      const end = new Date(start.getTime() + durationMs);
       return { startTime: start.toISOString(), endTime: end.toISOString() };
     });
 
@@ -150,10 +153,11 @@ export type CreateAppointmentInput = {
   contactId: string;
   startTime: string;
   endTime: string;
+  calendarId?: string;
 };
 
 export async function createAppointment(input: CreateAppointmentInput): Promise<string> {
-  const calendarId = requireEnv("GHL_CALENDAR_ID");
+  const calendarId = input.calendarId || requireEnv("GHL_CALENDAR_ID");
   const locationId = requireEnv("GHL_LOCATION_ID");
 
   const res = await fetch(`${BASE}/calendars/events/appointments`, {

@@ -9,6 +9,7 @@ type Props = {
   timezone: string;
   selected: Slot | null;
   onSelect: (slot: Slot | null) => void;
+  slotsEndpoint?: string;
 };
 
 const DOW = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
@@ -33,7 +34,7 @@ function ymd(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-export default function Calendar({ timezone, selected, onSelect }: Props) {
+export default function Calendar({ timezone, selected, onSelect, slotsEndpoint = "/api/calendar/slots" }: Props) {
   const [cursor, setCursor] = useState<Date>(() => startOfMonth(new Date()));
   const [slotsByDate, setSlotsByDate] = useState<SlotsByDate>([]);
   const [loading, setLoading] = useState(false);
@@ -48,7 +49,7 @@ export default function Calendar({ timezone, selected, onSelect }: Props) {
 
     const start = startOfMonth(cursor).getTime();
     const end = endOfMonth(cursor).getTime();
-    const url = `/api/calendar/slots?startDate=${start}&endDate=${end}&timezone=${encodeURIComponent(timezone)}`;
+    const url = `${slotsEndpoint}?startDate=${start}&endDate=${end}&timezone=${encodeURIComponent(timezone)}`;
 
     fetch(url, { signal: ctrl.signal })
       .then(async (r) => {
@@ -66,7 +67,7 @@ export default function Calendar({ timezone, selected, onSelect }: Props) {
       });
 
     return () => ctrl.abort();
-  }, [cursor, timezone]);
+  }, [cursor, timezone, slotsEndpoint]);
 
   const availableDates = useMemo(() => new Set(slotsByDate.map((s) => s.date)), [slotsByDate]);
   const slotsForActive = useMemo(() => {
